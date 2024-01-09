@@ -1,6 +1,6 @@
 package ports
 
 type GPTPort interface {
-	CreateCategories(number int) (*[]string, error)
-	Classify(categories []string, text string) (string, error)
+	CreateCategories(samples string) (*[]string, error)
+	Classify(categories interface{}, issue string) (string, error)
 }
