@@ -40,7 +40,6 @@ func (gpt OpenAIAdapter) Classify(categories string, issue string) (string, erro
 	)
 
 	if err != nil {
-		fmt.Printf("ChatCompletion error: %v\n", err)
 		return "nil", err
 	}
 	return resp.Choices[0].Message.Content, nil
@@ -71,10 +70,7 @@ func (gpt OpenAIAdapter) CreateCategories(samples string) (string, error) {
 	)
 
 	if err != nil {
-		fmt.Printf("ChatCompletion error: %v\n", err)
 		return "", err
 	}
-
-	fmt.Println(resp.Choices[0].Message.Content)
 	return resp.Choices[0].Message.Content, nil
 }

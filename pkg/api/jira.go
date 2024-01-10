@@ -44,7 +44,6 @@ func (jira JiraAdapter) GetIssues(project string, days int, jql string) (*models
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+configs.JiraApiKey())
-	fmt.Println("Making request")
 	res, err := client.Do(req)
 	if err != nil {
 		return nil, err

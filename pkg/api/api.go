@@ -32,7 +32,6 @@ func (api ApiAdapter) ClassifyIssues(project string, days int, jql string) error
 	fmt.Println("Parsing issues...")
 	var conversations []string
 	for _, issue := range issues[:10] {
-		fmt.Printf("\nKey: %s,\nSummary: %s\n\n", issue.Key, issue.Summary)
 		conversations = append(conversations, issue.Conversation)
 	}
 	fmt.Println("Creating categories...")
@@ -60,8 +59,6 @@ func (api ApiAdapter) ClassifyIssues(project string, days int, jql string) error
 			Category:    category.Category,
 			Subcategory: category.Subcategory,
 		}
-		fmt.Printf("\nAdding Classification Key: %s,\nSummary: %s\n\n", classification.Key, classification.Summary)
-
 		classifications = append(classifications, classification)
 	}
 
@@ -82,11 +79,13 @@ func (api ApiAdapter) ClassifyIssues(project string, days int, jql string) error
 	if err != nil {
 		return err
 	}
+	fmt.Println("Created issues.csv!")
 	fmt.Println("Generating Stats Report...")
 	err = generateStatsCsv(stats)
 	if err != nil {
 		return err
 	}
+	fmt.Println("Created stats.csv!")
 	fmt.Println("Done!")
 
 	return nil
