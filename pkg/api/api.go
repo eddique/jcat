@@ -83,8 +83,9 @@ func (api ApiAdapter) Run() error {
 func (api ApiAdapter) generateClassifications(issues []models.IssueData, categories string) ([]models.Classification, error) {
 	var classifications []models.Classification
 	length := len(issues)
+	statusBar := []byte(strings.Repeat("_", 25))
 	for i, issue := range issues {
-		fmt.Printf("Generating classification for %s\t\t%d of %d\n", issue.Key, i+1, length)
+		fmt.Printf("Generating classification for %s %s %d of %d\n", issue.Key, string(statusBar), i+1, length)
 		resp, err := api.openai.Classify(categories, issue.Conversation)
 		if err != nil {
 			fmt.Println(err)
