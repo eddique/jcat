@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"time"
 
-	// "github.com/eddique/jcat/pkg/core/configs"
 	"github.com/eddique/jcat/pkg/core/configs"
 	"github.com/eddique/jcat/pkg/core/models"
 )
@@ -65,4 +64,26 @@ func (jira JiraAdapter) GetIssues(project string, days int, jql string) (*models
 
 func formatDate(days int) string {
 	return time.Now().AddDate(0, 0, -days).Format("2006-01-02")
+}
+
+func parseIssues(jiraIssues []models.Issue) []models.IssueData {
+	var issues []models.IssueData
+	for _, jiraIssue := range jiraIssues {
+		conversation := fmt.Sprintf(
+			"Summary: %s \nDescription: %s\n",
+			jiraIssue.Fields.Summary,
+			jiraIssue.Fields.Description,
+		)
+		for _, comment := range jiraIssue.Fields.Comment.Comments {
+			conversation += fmt.Sprintf("User: %s", comment.Body)
+		}
+		issue := models.IssueData{
+			ID:           jiraIssue.ID,
+			Key:          jiraIssue.Key,
+			Summary:      jiraIssue.Fields.Summary,
+			Conversation: conversation,
+		}
+		issues = append(issues, issue)
+	}
+	return issues
 }
