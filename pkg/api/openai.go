@@ -22,7 +22,7 @@ func (gpt OpenAIAdapter) Classify(categories string, issue string) (string, erro
 	Use the following categories to classify the following JIRA issue:
 	%s
 	return a JSON object with the keys "category" and "subcategory", 
-	importantly, do not explain why just return one JSON object and make sure it's one of the
+	importantly, do not explain why just return one JSON object, without backticks, and make sure it's one of the
 	categories/subcategories.
 
 	%s`, string(categories), issue)
