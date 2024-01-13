@@ -2,7 +2,7 @@
 A WIP CLI to catogorize issues in a given Jira project
 
 ## Secrets
-Export the following values in your terminal session before running jcat.py
+Export the following values in your terminal session before running jcat
 ```sh
 export JIRA_API_KEY=<Your Jira API Key> \
 export OPENAI_API_KEY=<Your OpenAI API Key>
