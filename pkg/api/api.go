@@ -4,8 +4,9 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"os"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/eddique/jcat/pkg/core/models"
 	"github.com/eddique/jcat/pkg/ports"
@@ -22,11 +23,13 @@ func NewApiAdapter(openai ports.GPTPort, jira ports.IssuePort) *ApiAdapter {
 
 func (api ApiAdapter) ClassifyIssues(project string, days int, jql string) error {
 	fmt.Println("Fetching issues...")
-	issueResponse, err := api.jira.GetIssues(project, days, jql)
+	var issueData []models.Issue
+	err := api.jira.FetchIssues(&issueData, project, days, jql, 0, 0)
 	if err != nil {
 		return err
 	}
-	issues := parseIssues(issueResponse.Issues)
+	issues := parseIssues(issueData)
+	fmt.Printf("Fetched %d issues...\n", len(issues))
 	fmt.Println("Parsing issues...")
 	var conversations []string
 	for _, issue := range issues[:10] {
@@ -39,7 +42,7 @@ func (api ApiAdapter) ClassifyIssues(project string, days int, jql string) error
 		return err
 	}
 	fmt.Println("Classifying issues...")
-	classifications, err := api.generateClassifications(issues[:10], categories)
+	classifications, err := api.generateClassifications(issues[:100], categories)
 	if err != nil {
 		return err
 	}
@@ -67,12 +70,13 @@ func (api ApiAdapter) ClassifyIssues(project string, days int, jql string) error
 func (api ApiAdapter) Run() error {
 	var jql string
 	var days int
+	var project string
 
 	flag.StringVar(&jql, "jql", "", "Specify custom jql query")
 	flag.IntVar(&days, "days", 90, "Days before now to query issues")
+	flag.StringVar(&project, "project", "IT", "Specify the project")
 	flag.Parse()
 
-	project := os.Args[1]
 	err := api.ClassifyIssues(project, days, jql)
 	if err != nil {
 		return err
@@ -81,29 +85,53 @@ func (api ApiAdapter) Run() error {
 }
 
 func (api ApiAdapter) generateClassifications(issues []models.IssueData, categories string) ([]models.Classification, error) {
+	const numWorkers = 20
+	issueChan := make(chan models.IssueData, len(issues))
+	classificationChan := make(chan models.Classification, len(issues))
+	var wg sync.WaitGroup
+
+	for i := 0; i < numWorkers; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for issue := range issueChan {
+				fmt.Println("Classifying issue", issue.Key)
+				resp, err := api.openai.Classify(categories, issue.Conversation)
+				if err != nil {
+					fmt.Println(err)
+					continue
+				}
+				var category models.Category
+				err = json.Unmarshal([]byte(resp), &category)
+				if err != nil {
+					fmt.Println(err)
+					continue
+				}
+				classification := models.Classification{
+					Key:         issue.Key,
+					Summary:     issue.Summary,
+					Category:    category.Category,
+					Subcategory: category.Subcategory,
+				}
+				classificationChan <- classification
+				time.Sleep(time.Second)
+			}
+		}()
+	}
+	for _, issue := range issues {
+		issueChan <- issue
+	}
+	close(issueChan)
+
+	go func() {
+		wg.Wait()
+		close(classificationChan)
+	}()
+
 	var classifications []models.Classification
-	length := len(issues)
-	statusBar := []byte(strings.Repeat("_", 25))
-	for i, issue := range issues {
-		fmt.Printf("Generating classification for %s %s %d of %d\n", issue.Key, string(statusBar), i+1, length)
-		resp, err := api.openai.Classify(categories, issue.Conversation)
-		if err != nil {
-			fmt.Println(err)
-			continue
-		}
-		var category models.Category
-		err = json.Unmarshal([]byte(resp), &category)
-		if err != nil {
-			fmt.Println(err)
-			continue
-		}
-		classification := models.Classification{
-			Key:         issue.Key,
-			Summary:     issue.Summary,
-			Category:    category.Category,
-			Subcategory: category.Subcategory,
-		}
+	for classification := range classificationChan {
 		classifications = append(classifications, classification)
 	}
+
 	return classifications, nil
 }

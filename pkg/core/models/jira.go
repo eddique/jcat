@@ -1,9 +1,11 @@
 package models
 
 type IssueQueryResponse struct {
-	Issues  []Issue `json:"issues"`
-	StartAt int     `json:"startAt"`
-	Total   int     `json:"total"`
+	Issues     []Issue `json:"issues"`
+	StartAt    int     `json:"startAt"`
+	Total      int     `json:"total"`
+	IsLast     *bool   `json:"isLast"`
+	MaxResults int     `json:"maxResults"`
 }
 type Issue struct {
 	ID     string      `json:"id"`
@@ -32,4 +34,5 @@ type IssueQueryRequest struct {
 	Fields     []string `json:"fields"`
 	JQL        string   `json:"jql"`
 	MaxResults int      `json:"maxResults"`
+	StartAt    int      `json:"startAt"`
 }
