@@ -5,4 +5,5 @@ go 1.20
 require (
 	github.com/joho/godotenv v1.5.1
 	github.com/sashabaranov/go-openai v1.17.10
+	golang.org/x/time v0.5.0
 )

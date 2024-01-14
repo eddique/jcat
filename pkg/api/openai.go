@@ -2,9 +2,11 @@ package api
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/eddique/jcat/pkg/core/configs"
+	"github.com/eddique/jcat/pkg/core/models"
 	openai "github.com/sashabaranov/go-openai"
 )
 
@@ -17,7 +19,7 @@ func NewOpenAIAdapter() *OpenAIAdapter {
 	return &OpenAIAdapter{client}
 }
 
-func (gpt OpenAIAdapter) Classify(categories string, issue string) (string, error) {
+func (gpt OpenAIAdapter) Classify(categories string, issue string) (*models.Category, error) {
 	prompt := fmt.Sprintf(`
 	Use the following categories to classify the following JIRA issue:
 	%s
@@ -38,11 +40,18 @@ func (gpt OpenAIAdapter) Classify(categories string, issue string) (string, erro
 			},
 		},
 	)
-
 	if err != nil {
-		return "nil", err
+		return nil, err
 	}
-	return resp.Choices[0].Message.Content, nil
+	var category models.Category
+	err = json.Unmarshal([]byte(resp.Choices[0].Message.Content), &category)
+	if err != nil {
+		return nil, err
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &category, nil
 }
 
 func (gpt OpenAIAdapter) CreateCategories(samples string) (string, error) {

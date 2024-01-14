@@ -1,12 +1,14 @@
 package api
 
 import (
-	"encoding/json"
+	"context"
 	"flag"
 	"fmt"
 	"strings"
 	"sync"
 	"time"
+
+	"golang.org/x/time/rate"
 
 	"github.com/eddique/jcat/pkg/core/models"
 	"github.com/eddique/jcat/pkg/ports"
@@ -15,10 +17,12 @@ import (
 type ApiAdapter struct {
 	openai ports.GPTPort
 	jira   ports.IssuePort
+	rate   *rate.Limiter
 }
 
 func NewApiAdapter(openai ports.GPTPort, jira ports.IssuePort) *ApiAdapter {
-	return &ApiAdapter{openai, jira}
+	rateLimit := rate.NewLimiter(rate.Every(time.Minute), 1000)
+	return &ApiAdapter{openai, jira, rateLimit}
 }
 
 func (api ApiAdapter) ClassifyIssues(project string, days int, jql string) error {
@@ -42,7 +46,7 @@ func (api ApiAdapter) ClassifyIssues(project string, days int, jql string) error
 		return err
 	}
 	fmt.Println("Classifying issues...")
-	classifications, err := api.generateClassifications(issues[:100], categories)
+	classifications, err := api.generateClassifications(issues[:10], categories)
 	if err != nil {
 		return err
 	}
@@ -89,20 +93,17 @@ func (api ApiAdapter) generateClassifications(issues []models.IssueData, categor
 	issueChan := make(chan models.IssueData, len(issues))
 	classificationChan := make(chan models.Classification, len(issues))
 	var wg sync.WaitGroup
-
 	for i := 0; i < numWorkers; i++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
 			for issue := range issueChan {
-				fmt.Println("Classifying issue", issue.Key)
-				resp, err := api.openai.Classify(categories, issue.Conversation)
-				if err != nil {
+				if err := api.rate.Wait(context.Background()); err != nil {
 					fmt.Println(err)
 					continue
 				}
-				var category models.Category
-				err = json.Unmarshal([]byte(resp), &category)
+				fmt.Println("Classifying issue", issue.Key)
+				category, err := api.openai.Classify(categories, issue.Conversation)
 				if err != nil {
 					fmt.Println(err)
 					continue
