@@ -87,7 +87,31 @@ func (api ApiAdapter) Run() error {
 	}
 	return nil
 }
-
+func (api ApiAdapter) GenerateClassifications(issues []models.IssueData, categories string) ([]models.Classification, error) {
+	var classifications []models.Classification
+	length := len(issues)
+	statusBar := []byte(strings.Repeat("_", 25))
+	for i, issue := range issues {
+		fmt.Printf("Generating classification for %s %s %d of %d\n", issue.Key, string(statusBar), i+1, length)
+		category, err := api.openai.Classify(categories, issue.Conversation)
+		if err != nil {
+			fmt.Println(err)
+			continue
+		}
+		if err != nil {
+			fmt.Println(err)
+			continue
+		}
+		classification := models.Classification{
+			Key:         issue.Key,
+			Summary:     issue.Summary,
+			Category:    category.Category,
+			Subcategory: category.Subcategory,
+		}
+		classifications = append(classifications, classification)
+	}
+	return classifications, nil
+}
 func (api ApiAdapter) generateClassifications(issues []models.IssueData, categories string) ([]models.Classification, error) {
 	const numWorkers = 20
 	issueChan := make(chan models.IssueData, len(issues))
